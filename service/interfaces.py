@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from domain.schemas import FigurinhaCreate, FigurinhaUpdate, FigurinhaOut
+from domain.figurinha import FigurinhaOut
 
 
 @dataclass
@@ -23,6 +23,22 @@ class UpdateFigurinhaData:
     tipo: str
     posicao: str
     updated_at: datetime
+
+
+class FigurinhaNotFound(Exception):
+    pass
+
+
+class MissingFields(Exception):
+    pass
+
+
+class InvalidTipo(Exception):
+    pass
+
+
+class InvalidPosicao(Exception):
+    pass
 
 
 class FigurinhaRepository(ABC):
@@ -47,21 +63,21 @@ class FigurinhaRepository(ABC):
         pass
 
     @abstractmethod
-    def find_by_id(self, id: int) -> dict:
+    def find_by_id(self, id: int) -> dict | None:
         pass
 
     @abstractmethod
-    def update(self, id: int, data: UpdateFigurinhaData) -> dict:
+    def update(self, id: int, data: UpdateFigurinhaData) -> dict | None:
         pass
 
     @abstractmethod
-    def delete(self, id: int) -> None:
+    def delete(self, id: int) -> bool:
         pass
 
 
 class FigurinhaService(ABC):
     @abstractmethod
-    def create(self, data: FigurinhaCreate) -> FigurinhaOut:
+    def create(self, data: dict) -> FigurinhaOut:
         pass
 
     @abstractmethod
@@ -73,7 +89,7 @@ class FigurinhaService(ABC):
         pass
 
     @abstractmethod
-    def update(self, id: int, data: FigurinhaUpdate) -> FigurinhaOut:
+    def update(self, id: int, data: dict) -> FigurinhaOut:
         pass
 
     @abstractmethod

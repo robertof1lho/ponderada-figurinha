@@ -1,4 +1,6 @@
 from enum import Enum
+from datetime import datetime
+from pydantic import BaseModel
 
 
 class Tipo(str, Enum):
@@ -15,17 +17,28 @@ class Posicao(str, Enum):
     atacante = "Atacante"
 
 
-class FigurinhaNotFound(Exception):
-    pass
+class FigurinhaCreate(BaseModel):
+    numero: str
+    nome: str
+    selecao: str
+    tipo: Tipo
+    posicao: Posicao
 
 
-class MissingFields(Exception):
-    pass
+class FigurinhaUpdate(BaseModel):
+    numero: str
+    nome: str
+    selecao: str
+    tipo: Tipo
+    posicao: Posicao
 
 
-class InvalidTipo(Exception):
-    pass
-
-
-class InvalidPosicao(Exception):
-    pass
+class FigurinhaOut(BaseModel):
+    id: int
+    numero: str
+    nome: str
+    selecao: str
+    tipo: Tipo
+    posicao: Posicao
+    created_at: datetime
+    updated_at: datetime

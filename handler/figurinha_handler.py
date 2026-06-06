@@ -1,11 +1,9 @@
 import json
 from http.server import BaseHTTPRequestHandler
-from service.interfaces import FigurinhaService
-from domain.figurinha import FigurinhaNotFound, MissingFields, InvalidTipo, InvalidPosicao
-from domain.schemas import FigurinhaCreate, FigurinhaUpdate
+from service.interfaces import FigurinhaService, FigurinhaNotFound, MissingFields, InvalidTipo, InvalidPosicao
 
 
-DOMAIN_ERRORS = {
+SERVICES_ERRORS = {
     FigurinhaNotFound: 404,
     MissingFields:     400,
     InvalidTipo:       400,
@@ -43,8 +41,8 @@ class FigurinhaHandler:
     def _send_error(self, handler: BaseHTTPRequestHandler, status: int, message: str) -> None:
         self._send_json(handler, status, {"error": message})
 
-    def _handle_domain_error(self, handler: BaseHTTPRequestHandler, exc: Exception) -> bool:
-        for error_type, status in DOMAIN_ERRORS.items():
+    def _handle_service_error(self, handler: BaseHTTPRequestHandler, exc: Exception) -> bool:
+        for error_type, status in SERVICES_ERRORS.items():
             if isinstance(exc, error_type):
                 self._send_error(handler, status, str(exc) or error_type.__name__)
                 return True
@@ -59,10 +57,10 @@ class FigurinhaHandler:
             self._send_error(handler, 400, str(e))
             return
         try:
-            result = self.service.create(FigurinhaCreate(**body))
+            result = self.service.create(body)
             self._send_json(handler, 201, result.model_dump())
         except Exception as e:
-            if not self._handle_domain_error(handler, e):
+            if not self._handle_service_error(handler, e):
                 self._send_error(handler, 500, "erro interno")
 
     def list(self, handler: BaseHTTPRequestHandler, posicao: str | None, tipo: str | None) -> None:
@@ -70,7 +68,7 @@ class FigurinhaHandler:
             results = self.service.list(posicao, tipo)
             self._send_json(handler, 200, [r.model_dump() for r in results])
         except Exception as e:
-            if not self._handle_domain_error(handler, e):
+            if not self._handle_service_error(handler, e):
                 self._send_error(handler, 500, "erro interno")
 
     def get_by_id(self, handler: BaseHTTPRequestHandler, id_str: str) -> None:
@@ -83,7 +81,7 @@ class FigurinhaHandler:
             result = self.service.get_by_id(id)
             self._send_json(handler, 200, result.model_dump())
         except Exception as e:
-            if not self._handle_domain_error(handler, e):
+            if not self._handle_service_error(handler, e):
                 self._send_error(handler, 500, "erro interno")
 
     def update(self, handler: BaseHTTPRequestHandler, id_str: str) -> None:
@@ -94,10 +92,10 @@ class FigurinhaHandler:
             self._send_error(handler, 400, str(e))
             return
         try:
-            result = self.service.update(id, FigurinhaUpdate(**body))
+            result = self.service.update(id, body)
             self._send_json(handler, 200, result.model_dump())
         except Exception as e:
-            if not self._handle_domain_error(handler, e):
+            if not self._handle_service_error(handler, e):
                 self._send_error(handler, 500, "erro interno")
 
     def delete(self, handler: BaseHTTPRequestHandler, id_str: str) -> None:
@@ -111,5 +109,5 @@ class FigurinhaHandler:
             handler.send_response(204)
             handler.end_headers()
         except Exception as e:
-            if not self._handle_domain_error(handler, e):
+            if not self._handle_service_error(handler, e):
                 self._send_error(handler, 500, "erro interno")

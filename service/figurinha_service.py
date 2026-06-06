@@ -1,17 +1,17 @@
 from datetime import datetime
 from pydantic import ValidationError
 from service.interfaces import FigurinhaRepository, FigurinhaService, CreateFigurinhaData, UpdateFigurinhaData
-from domain.schemas import FigurinhaCreate, FigurinhaUpdate, FigurinhaOut
-from domain.figurinha import MissingFields, InvalidTipo, InvalidPosicao
+from domain.figurinha import FigurinhaCreate, FigurinhaUpdate, FigurinhaOut
+from service.interfaces import FigurinhaNotFound, MissingFields, InvalidTipo, InvalidPosicao
 
 
 class FigurinhaServiceImpl(FigurinhaService):
     def __init__(self, repo: FigurinhaRepository):
         self.repo = repo
 
-    def _validate_create(self, data: FigurinhaCreate) -> FigurinhaCreate:
+    def _validate_create(self, data: dict) -> FigurinhaCreate:
         try:
-            return FigurinhaCreate(**data.model_dump())
+            return FigurinhaCreate(**data)
         except ValidationError as e:
             for error in e.errors():
                 field = error["loc"][0]
@@ -19,14 +19,14 @@ class FigurinhaServiceImpl(FigurinhaService):
                 if kind == "missing":
                     raise MissingFields(f"campo obrigatório ausente: {field}")
                 if field == "tipo":
-                    raise InvalidTipo(f"tipo inválido: {data.tipo}")
+                    raise InvalidTipo(f"tipo inválido: {data.get('tipo')}")
                 if field == "posicao":
-                    raise InvalidPosicao(f"posicao inválida: {data.posicao}")
+                    raise InvalidPosicao(f"posicao inválida: {data.get('posicao')}")
             raise MissingFields("dados inválidos")
 
-    def _validate_update(self, data: FigurinhaUpdate) -> FigurinhaUpdate:
+    def _validate_update(self, data: dict) -> FigurinhaUpdate:
         try:
-            return FigurinhaUpdate(**data.model_dump())
+            return FigurinhaUpdate(**data)
         except ValidationError as e:
             for error in e.errors():
                 field = error["loc"][0]
@@ -34,12 +34,12 @@ class FigurinhaServiceImpl(FigurinhaService):
                 if kind == "missing":
                     raise MissingFields(f"campo obrigatório ausente: {field}")
                 if field == "tipo":
-                    raise InvalidTipo(f"tipo inválido: {data.tipo}")
+                    raise InvalidTipo(f"tipo inválido: {data.get('tipo')}")
                 if field == "posicao":
-                    raise InvalidPosicao(f"posicao inválida: {data.posicao}")
+                    raise InvalidPosicao(f"posicao inválida: {data.get('posicao')}")
             raise MissingFields("dados inválidos")
 
-    def create(self, data: FigurinhaCreate) -> FigurinhaOut:
+    def create(self, data: dict) -> FigurinhaOut:
         validated = self._validate_create(data)
         now = datetime.now()
         repo_data = CreateFigurinhaData(
@@ -65,9 +65,12 @@ class FigurinhaServiceImpl(FigurinhaService):
         return [FigurinhaOut(**row) for row in rows]
 
     def get_by_id(self, id: int) -> FigurinhaOut:
-        return FigurinhaOut(**self.repo.find_by_id(id))
+        row = self.repo.find_by_id(id)
+        if row is None:
+            raise FigurinhaNotFound()
+        return FigurinhaOut(**row)
 
-    def update(self, id: int, data: FigurinhaUpdate) -> FigurinhaOut:
+    def update(self, id: int, data: dict) -> FigurinhaOut:
         validated = self._validate_update(data)
         repo_data = UpdateFigurinhaData(
             numero=validated.numero,
@@ -77,7 +80,11 @@ class FigurinhaServiceImpl(FigurinhaService):
             posicao=validated.posicao.value,
             updated_at=datetime.now(),
         )
-        return FigurinhaOut(**self.repo.update(id, repo_data))
+        row = self.repo.update(id, repo_data)
+        if row is None:
+            raise FigurinhaNotFound()
+        return FigurinhaOut(**row)
 
     def delete(self, id: int) -> None:
-        self.repo.delete(id)
+        if not self.repo.delete(id):
+            raise FigurinhaNotFound()
